@@ -80,7 +80,7 @@ src/lib/
 ### What belongs where
 
 - `config/`: app metadata, environment-derived settings, feature flags.
-- `db/`: Prisma client setup and database query modules only.
+- `db/`: Prisma client setup and database query modules only. This project uses **Prisma ORM** with **Prisma Postgres**.
 - `auth/`: password hashing, session creation/validation, cookie/session helpers.
 - `utils/`: small pure helpers with no framework, database, or business-rule dependencies.
 - `domain/`: business rules and use-case logic that are specific to the app domain.
@@ -127,6 +127,12 @@ src/lib/
 - Use **database-backed sessions in `HttpOnly` cookies**, not JWT-led auth, unless requirements change.
 - Cookie contents should store an opaque session identifier, not sensitive user data.
 - Logout should invalidate the session in the database and clear the cookie.
+
+## Database guidance
+
+- Use **Prisma ORM** as the database access layer.
+- Use **Prisma Postgres** as the default PostgreSQL provider unless project requirements change.
+- Keep database provider details out of UI code and general utilities.
 
 ## API guidance
 
