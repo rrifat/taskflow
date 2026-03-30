@@ -34,3 +34,13 @@ At this stage the repository contains:
 - placeholder routes for `/login` and `/board`
 - a simple health endpoint at `/api/health`
 - shared app metadata/config for upcoming features
+
+## Planned Stack
+
+- Next.js 16 App Router
+- TypeScript
+- Tailwind CSS v4
+- Prisma ORM
+- Prisma Postgres
+- Route Handlers for API mutations
+- Database-backed session cookies
