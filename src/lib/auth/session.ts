@@ -86,3 +86,30 @@ export function getClearedSessionCookie() {
     maxAge: 0,
   };
 }
+
+export async function getSessionByToken(token: string) {
+  const sessionId = decodeSessionToken(token);
+
+  if (!sessionId) {
+    return null;
+  }
+
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!session || session.expiresAt <= new Date()) {
+    return null;
+  }
+
+  return session;
+}
