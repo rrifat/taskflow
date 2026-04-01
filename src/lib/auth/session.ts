@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { prisma } from "@/lib/db/client";
 
-const SESSION_COOKIE_NAME = "taskflow_session";
+export const SESSION_COOKIE_NAME = "taskflow_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function getSessionSecret() {
@@ -34,10 +34,24 @@ export function isSessionTokenValid(token: string) {
 
   const expectedSignature = signSessionId(sessionId);
 
+  if (signature.length !== expectedSignature.length) {
+    return false;
+  }
+
   return timingSafeEqual(
     Buffer.from(signature),
     Buffer.from(expectedSignature),
   );
+}
+
+export function decodeSessionToken(token: string) {
+  const [sessionId] = token.split(".");
+
+  if (!sessionId || !isSessionTokenValid(token)) {
+    return null;
+  }
+
+  return sessionId;
 }
 
 export async function createSession(userId: string) {
@@ -58,5 +72,17 @@ export function getSessionCookie(sessionId: string) {
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
+  };
+}
+
+export function getClearedSessionCookie() {
+  return {
+    name: SESSION_COOKIE_NAME,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
   };
 }
