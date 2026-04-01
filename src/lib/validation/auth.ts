@@ -11,4 +11,10 @@ export const registerSchema = z.object({
     .max(72, "Password must be 72 characters or fewer."),
 });
 
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, "Password is required."),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
