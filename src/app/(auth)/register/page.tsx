@@ -3,13 +3,13 @@ import type { Metadata } from "next";
 import { AuthForm } from "@/app/(auth)/_components/auth-form";
 
 export const metadata: Metadata = {
-  title: "Login",
+  title: "Register",
 };
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-6 py-16">
-      <AuthForm mode="login" />
+      <AuthForm mode="register" />
     </main>
   );
 }

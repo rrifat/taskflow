@@ -7,7 +7,13 @@ const links = [
     href: "/login",
     label: "Login route",
     description:
-      "Placeholder authentication entry point for the upcoming session flow.",
+      "Sign in with the database-backed session flow.",
+  },
+  {
+    href: "/register",
+    label: "Register route",
+    description:
+      "Create a new account through the shared validation and auth API flow.",
   },
   {
     href: "/board",
