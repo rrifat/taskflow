@@ -38,6 +38,17 @@ type BoardColumnsProps = {
   categories: Category[];
 };
 
+type DragState = {
+  ticketId: string;
+  sourceCategoryId: string;
+  sourceIndex: number;
+};
+
+type DropTarget = {
+  categoryId: string;
+  index: number;
+};
+
 function formatExpiryDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -48,6 +59,112 @@ function formatExpiryDate(value: string) {
 
 function toDateInputValue(value: string) {
   return value.slice(0, 10);
+}
+
+function moveTicketInCategories(
+  categories: Category[],
+  draggedTicketId: string,
+  sourceCategoryId: string,
+  destinationCategoryId: string,
+  destinationIndex: number,
+) {
+  const nextCategories = categories.map((category) => ({
+    ...category,
+    tickets: [...category.tickets],
+  }));
+
+  const sourceCategory = nextCategories.find(
+    (category) => category.id === sourceCategoryId,
+  );
+  const destinationCategory = nextCategories.find(
+    (category) => category.id === destinationCategoryId,
+  );
+
+  if (!sourceCategory || !destinationCategory) {
+    return categories;
+  }
+
+  const draggedTicket = sourceCategory.tickets.find(
+    (ticket) => ticket.id === draggedTicketId,
+  );
+
+  if (!draggedTicket) {
+    return categories;
+  }
+
+  sourceCategory.tickets = sourceCategory.tickets.filter(
+    (ticket) => ticket.id !== draggedTicketId,
+  );
+
+  const clampedIndex = Math.min(
+    Math.max(destinationIndex, 0),
+    destinationCategory.tickets.length,
+  );
+
+  destinationCategory.tickets.splice(clampedIndex, 0, {
+    ...draggedTicket,
+  });
+
+  nextCategories.forEach((category) => {
+    category.tickets = category.tickets.map((ticket, index) => ({
+      ...ticket,
+      order: index,
+    }));
+    category._count = {
+      tickets: category.tickets.length,
+    };
+  });
+
+  return nextCategories;
+}
+
+function getNormalizedDropTarget(
+  categories: Category[],
+  dragState: DragState,
+  dropTarget: DropTarget,
+) {
+  const sourceCategory = categories.find(
+    (category) => category.id === dragState.sourceCategoryId,
+  );
+
+  if (!sourceCategory) {
+    return null;
+  }
+
+  let nextIndex = dropTarget.index;
+
+  if (
+    dropTarget.categoryId === dragState.sourceCategoryId &&
+    nextIndex > dragState.sourceIndex
+  ) {
+    nextIndex -= 1;
+  }
+
+  const destinationCategory = categories.find(
+    (category) => category.id === dropTarget.categoryId,
+  );
+
+  if (!destinationCategory) {
+    return null;
+  }
+
+  const clampedIndex = Math.min(
+    Math.max(nextIndex, 0),
+    destinationCategory.tickets.length -
+      (dropTarget.categoryId === dragState.sourceCategoryId ? 1 : 0),
+  );
+
+  if (
+    dropTarget.categoryId === dragState.sourceCategoryId &&
+    clampedIndex === dragState.sourceIndex
+  ) {
+    return null;
+  }
+
+  return {
+    categoryId: dropTarget.categoryId,
+    index: clampedIndex,
+  };
 }
 
 function TicketEditDrawer({
@@ -240,6 +357,8 @@ function TicketEditDrawer({
 }
 
 export function BoardColumns({ categories }: BoardColumnsProps) {
+  const router = useRouter();
+  const [boardCategories, setBoardCategories] = useState(categories);
   const [activeTicket, setActiveTicket] = useState<{
     categoryName: string;
     ticket: Ticket;
@@ -247,6 +366,13 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
   const [descriptionDrafts, setDescriptionDrafts] = useState<
     Record<string, string>
   >({});
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBoardCategories(categories);
+  }, [categories]);
 
   function handleDescriptionDraftChange(ticketId: string, value: string) {
     setDescriptionDrafts((current) => ({
@@ -263,14 +389,144 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
     });
   }
 
+  function handleCardDragOver(
+    event: React.DragEvent<HTMLElement>,
+    categoryId: string,
+    index: number,
+  ) {
+    if (!dragState) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const midpoint = bounds.top + bounds.height / 2;
+    const proposedTarget = {
+      categoryId,
+      index: event.clientY < midpoint ? index : index + 1,
+    };
+    const normalizedTarget = getNormalizedDropTarget(
+      boardCategories,
+      dragState,
+      proposedTarget,
+    );
+
+    if (!normalizedTarget) {
+      if (dropTarget) {
+        setDropTarget(null);
+      }
+      return;
+    }
+
+    if (
+      !dropTarget ||
+      dropTarget.categoryId !== normalizedTarget.categoryId ||
+      dropTarget.index !== normalizedTarget.index
+    ) {
+      setDropTarget(normalizedTarget);
+    }
+  }
+
+  async function handleTicketDrop() {
+    if (!dragState || !dropTarget) {
+      return;
+    }
+
+    const nextCategories = moveTicketInCategories(
+      boardCategories,
+      dragState.ticketId,
+      dragState.sourceCategoryId,
+      dropTarget.categoryId,
+      dropTarget.index,
+    );
+
+    setBoardCategories(nextCategories);
+    setMoveError(null);
+    setDragState(null);
+    setDropTarget(null);
+
+    try {
+      const response = await fetch(`/api/tickets/${dragState.ticketId}/move`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          destinationCategoryId: dropTarget.categoryId,
+          destinationIndex: dropTarget.index,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as unknown;
+
+      if (!response.ok) {
+        setMoveError(normalizeFormErrors(payload).formErrors?.[0] ?? "Unable to move this ticket right now. Please try again.");
+        setBoardCategories(categories);
+        router.refresh();
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setMoveError("Unable to move this ticket right now. Please try again.");
+      setBoardCategories(categories);
+      router.refresh();
+    }
+  }
+
   return (
     <>
+      <FormErrorBanner message={moveError ?? undefined} />
       <div className="-mx-6 overflow-x-auto px-6 pb-4">
         <div className="flex min-w-full gap-5">
-          {categories.map((category) => (
+          {boardCategories.map((category) => (
             <SurfaceCard
               key={category.id}
               className="flex min-h-80 w-[20rem] shrink-0 flex-col p-6"
+              onDragOver={(event) => {
+                if (!dragState) {
+                  return;
+                }
+
+                event.preventDefault();
+
+                if (event.target !== event.currentTarget) {
+                  return;
+                }
+
+                const normalizedTarget = getNormalizedDropTarget(
+                  boardCategories,
+                  dragState,
+                  {
+                    categoryId: category.id,
+                    index: category.tickets.length,
+                  },
+                );
+
+                if (!normalizedTarget) {
+                  if (dropTarget) {
+                    setDropTarget(null);
+                  }
+                  return;
+                }
+
+                if (
+                  !dropTarget ||
+                  dropTarget.categoryId !== normalizedTarget.categoryId ||
+                  dropTarget.index !== normalizedTarget.index
+                ) {
+                  setDropTarget(normalizedTarget);
+                }
+              }}
+              onDrop={(event) => {
+                if (!dragState) {
+                  return;
+                }
+
+                event.preventDefault();
+                void handleTicketDrop();
+              }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -287,38 +543,227 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
               </div>
               <div className="mt-6 flex-1 space-y-3">
                 {category.tickets.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                  <div
+                    className={`rounded-3xl border border-dashed px-4 py-8 text-center transition ${
+                      dragState && dropTarget?.categoryId === category.id
+                        ? "border-slate-400 bg-white"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                    onDragOver={(event) => {
+                      if (!dragState) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      const normalizedTarget = getNormalizedDropTarget(
+                        boardCategories,
+                        dragState,
+                        {
+                          categoryId: category.id,
+                          index: 0,
+                        },
+                      );
+
+                      if (!normalizedTarget) {
+                        if (dropTarget) {
+                          setDropTarget(null);
+                        }
+                        return;
+                      }
+
+                      if (
+                        !dropTarget ||
+                        dropTarget.categoryId !== normalizedTarget.categoryId ||
+                        dropTarget.index !== normalizedTarget.index
+                      ) {
+                        setDropTarget(normalizedTarget);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      if (!dragState) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      void handleTicketDrop();
+                    }}
+                  >
                     <p className="text-sm font-medium text-slate-600">
                       Tickets will appear here next
                     </p>
                   </div>
                 ) : (
-                  category.tickets.map((ticket) => (
-                    <button
-                      key={ticket.id}
-                      type="button"
-                      className="block w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-slate-300 hover:bg-white hover:cursor-pointer"
-                      onClick={() =>
-                        setActiveTicket({
-                          categoryName: category.name,
-                          ticket,
-                        })
-                      }
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-semibold text-slate-950">
-                          {ticket.title}
-                        </h3>
-                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
-                          {formatExpiryDate(ticket.expiryDate)}
-                        </span>
-                      </div>
-                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
-                        {ticket.description}
-                      </p>
-                    </button>
+                  category.tickets.map((ticket, index) => (
+                    <div key={ticket.id} className="space-y-3">
+                      <div
+                        className={`h-2 rounded-full transition ${
+                          dragState &&
+                          dropTarget?.categoryId === category.id &&
+                          dropTarget.index === index
+                            ? "bg-slate-300"
+                            : "bg-transparent"
+                        }`}
+                        onDragOver={(event) => {
+                          if (!dragState) {
+                            return;
+                          }
+
+                          event.preventDefault();
+                          event.stopPropagation();
+
+                          const normalizedTarget = getNormalizedDropTarget(
+                            boardCategories,
+                            dragState,
+                            {
+                              categoryId: category.id,
+                              index,
+                            },
+                          );
+
+                          if (!normalizedTarget) {
+                            if (dropTarget) {
+                              setDropTarget(null);
+                            }
+                            return;
+                          }
+
+                          if (
+                            !dropTarget ||
+                            dropTarget.categoryId !== normalizedTarget.categoryId ||
+                            dropTarget.index !== normalizedTarget.index
+                          ) {
+                            setDropTarget(normalizedTarget);
+                          }
+                        }}
+                        onDrop={(event) => {
+                          if (!dragState) {
+                            return;
+                          }
+
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleTicketDrop();
+                        }}
+                      />
+                      <button
+                        type="button"
+                        draggable
+                        className={`block w-full rounded-3xl border px-4 py-4 text-left transition hover:cursor-pointer ${
+                          dragState?.ticketId === ticket.id
+                            ? "border-slate-300 bg-white opacity-60"
+                            : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                        }`}
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", ticket.id);
+                                setDragState({
+                                  ticketId: ticket.id,
+                                  sourceCategoryId: category.id,
+                                  sourceIndex: index,
+                                });
+                                setDropTarget(null);
+                                setMoveError(null);
+                              }}
+                        onDragEnd={() => {
+                          setDragState(null);
+                          setDropTarget(null);
+                        }}
+                        onDragOver={(event) =>
+                          {
+                            event.stopPropagation();
+                            handleCardDragOver(event, category.id, index);
+                          }}
+                        onDrop={(event) => {
+                          if (!dragState) {
+                            return;
+                          }
+
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleTicketDrop();
+                        }}
+                        onClick={() => {
+                          if (dragState) {
+                            return;
+                          }
+
+                          setActiveTicket({
+                            categoryName: category.name,
+                            ticket,
+                          });
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="min-w-0 text-sm font-semibold text-slate-950">
+                              {ticket.title}
+                            </h3>
+                          </div>
+                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                            {formatExpiryDate(ticket.expiryDate)}
+                          </span>
+                        </div>
+                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+                          {ticket.description}
+                        </p>
+                      </button>
+                    </div>
                   ))
                 )}
+                {category.tickets.length > 0 ? (
+                  <div
+                    className={`h-2 rounded-full transition ${
+                      dragState &&
+                      dropTarget?.categoryId === category.id &&
+                      dropTarget.index === category.tickets.length
+                        ? "bg-slate-300"
+                        : "bg-transparent"
+                    }`}
+                    onDragOver={(event) => {
+                      if (!dragState) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      event.stopPropagation();
+
+                      const normalizedTarget = getNormalizedDropTarget(
+                        boardCategories,
+                        dragState,
+                        {
+                          categoryId: category.id,
+                          index: category.tickets.length,
+                        },
+                      );
+
+                      if (!normalizedTarget) {
+                        if (dropTarget) {
+                          setDropTarget(null);
+                        }
+                        return;
+                      }
+
+                      if (
+                        !dropTarget ||
+                        dropTarget.categoryId !== normalizedTarget.categoryId ||
+                        dropTarget.index !== normalizedTarget.index
+                      ) {
+                        setDropTarget(normalizedTarget);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      if (!dragState) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void handleTicketDrop();
+                    }}
+                  />
+                ) : null}
               </div>
               <div className="mt-6">
                 <TicketCreateForm
