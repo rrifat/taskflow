@@ -1,18 +1,15 @@
 "use client";
 
-import { loginSchema, registerSchema } from "@/lib/validation/auth";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useReducer, useState } from "react";
+
+import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
+import { loginSchema, registerSchema } from "@/lib/validation/auth";
+import Link from "next/link";
 import { z } from "zod";
 import FormFieldError from "./form-field-error";
 
 type AuthMode = "login" | "register";
-
-type FormErrors = {
-  formErrors?: string[];
-  fieldErrors?: Record<string, string[] | undefined>;
-};
 
 type AuthFormProps = {
   mode: AuthMode;
@@ -41,36 +38,6 @@ const authContent = {
   },
 } as const;
 
-function normalizeErrors(payload: unknown): FormErrors {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "error" in payload &&
-    typeof payload.error === "object" &&
-    payload.error !== null
-  ) {
-    const { formErrors, fieldErrors, message } = payload.error as {
-      message?: string;
-      formErrors?: string[];
-      fieldErrors?: Record<string, string[] | undefined>;
-    };
-
-    return {
-      formErrors:
-        formErrors && formErrors.length > 0
-          ? formErrors
-          : message
-            ? [message]
-            : undefined,
-      fieldErrors: fieldErrors,
-    };
-  }
-
-  return {
-    formErrors: ["Something went wrong. Please try again."],
-  };
-}
-
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const [formFields, setFormFields] = useReducer(
@@ -89,7 +56,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const isRegister = mode === "register";
   const content = authContent[mode];
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrors({});
 
@@ -123,7 +90,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       const payload = (await response.json().catch(() => null)) as unknown;
 
       if (!response.ok) {
-        setErrors(normalizeErrors(payload));
+        setErrors(normalizeFormErrors(payload));
         return;
       }
 
