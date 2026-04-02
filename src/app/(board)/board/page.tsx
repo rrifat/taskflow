@@ -1,19 +1,14 @@
 import Link from "next/link";
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
 
-import { getCurrentSession } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/guards";
 
 export const metadata: Metadata = {
   title: "Board",
 };
 
 export default async function BoardPage() {
-  const session = await getCurrentSession();
-
-  if (!session) {
-    redirect("/login");
-  }
+  const session = await requireUser();
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-16">
