@@ -8,6 +8,16 @@ export async function listCategoriesByUserId(userId: string) {
       id: true,
       name: true,
       order: true,
+      tickets: {
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          expiryDate: true,
+          order: true,
+        },
+      },
       _count: {
         select: {
           tickets: true,

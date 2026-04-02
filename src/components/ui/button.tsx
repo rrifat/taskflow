@@ -4,11 +4,12 @@ import { cx } from "@/lib/utils/cx";
 
 type ButtonProps = ComponentPropsWithoutRef<"button"> & {
   variant?: "primary" | "secondary";
+  size?: "sm" | "md";
   fullWidth?: boolean;
 };
 
 const baseClassName =
-  "inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center rounded-full font-medium transition disabled:cursor-not-allowed";
 
 const variantClassNames = {
   primary: "bg-slate-950 text-white hover:bg-slate-800 disabled:bg-slate-400",
@@ -16,9 +17,15 @@ const variantClassNames = {
     "border border-slate-300 bg-white text-slate-900 shadow-sm hover:border-slate-400 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400",
 } as const;
 
+const sizeClassNames = {
+  sm: "px-3.5 py-2 text-xs",
+  md: "px-5 py-3 text-sm",
+} as const;
+
 export function Button({
   className,
   variant = "primary",
+  size = "md",
   fullWidth = false,
   ...props
 }: ButtonProps) {
@@ -27,6 +34,7 @@ export function Button({
       className={cx(
         baseClassName,
         variantClassNames[variant],
+        sizeClassNames[size],
         fullWidth && "w-full",
         className,
       )}
