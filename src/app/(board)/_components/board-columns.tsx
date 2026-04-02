@@ -53,10 +53,16 @@ function toDateInputValue(value: string) {
 function TicketEditDrawer({
   categoryName,
   ticket,
+  descriptionDraft,
+  onDescriptionDraftChange,
+  onDescriptionDraftClear,
   onClose,
 }: {
   categoryName: string;
   ticket: Ticket;
+  descriptionDraft?: string;
+  onDescriptionDraftChange: (ticketId: string, value: string) => void;
+  onDescriptionDraftClear: (ticketId: string) => void;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -70,12 +76,14 @@ function TicketEditDrawer({
     }),
     {
       title: ticket.title,
-      description: ticket.description,
+      description: descriptionDraft ?? ticket.description,
       expiryDate: toDateInputValue(ticket.expiryDate),
     },
   );
 
   const { title, description, expiryDate } = ticketFields;
+  const hasDraftDescription =
+    typeof descriptionDraft === "string" && descriptionDraft !== ticket.description;
 
   useEffect(() => {
     setIsMounted(true);
@@ -99,7 +107,7 @@ function TicketEditDrawer({
     };
   }, [isSubmitting, onClose]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrors({});
 
@@ -137,6 +145,7 @@ function TicketEditDrawer({
         return;
       }
 
+      onDescriptionDraftClear(ticket.id);
       router.refresh();
       onClose();
     } catch {
@@ -195,10 +204,23 @@ function TicketEditDrawer({
 
           <FormErrorBanner message={errors.formErrors?.[0]} />
 
+          {hasDraftDescription ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Unsaved description draft restored. This local draft clears on
+              refresh.
+            </div>
+          ) : null}
+
           <TicketFormFields
             values={{ title, description, expiryDate }}
             errors={errors.fieldErrors}
-            onChange={setTicketFields}
+            onChange={(next) => {
+              setTicketFields(next);
+
+              if (typeof next.description === "string") {
+                onDescriptionDraftChange(ticket.id, next.description);
+              }
+            }}
           />
 
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row">
@@ -222,6 +244,24 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
     categoryName: string;
     ticket: Ticket;
   } | null>(null);
+  const [descriptionDrafts, setDescriptionDrafts] = useState<
+    Record<string, string>
+  >({});
+
+  function handleDescriptionDraftChange(ticketId: string, value: string) {
+    setDescriptionDrafts((current) => ({
+      ...current,
+      [ticketId]: value,
+    }));
+  }
+
+  function handleDescriptionDraftClear(ticketId: string) {
+    setDescriptionDrafts((current) => {
+      const next = { ...current };
+      delete next[ticketId];
+      return next;
+    });
+  }
 
   return (
     <>
@@ -295,6 +335,9 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
         <TicketEditDrawer
           categoryName={activeTicket.categoryName}
           ticket={activeTicket.ticket}
+          descriptionDraft={descriptionDrafts[activeTicket.ticket.id]}
+          onDescriptionDraftChange={handleDescriptionDraftChange}
+          onDescriptionDraftClear={handleDescriptionDraftClear}
           onClose={() => setActiveTicket(null)}
         />
       ) : null}
