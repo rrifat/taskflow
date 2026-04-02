@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { cookies } from "next/headers";
+
 import { prisma } from "@/lib/db/client";
 
 export const SESSION_COOKIE_NAME = "taskflow_session";
@@ -112,4 +114,15 @@ export async function getSessionByToken(token: string) {
   }
 
   return session;
+}
+
+export async function getCurrentSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  return getSessionByToken(token);
 }

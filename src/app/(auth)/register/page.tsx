@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { AuthForm } from "@/app/(auth)/_components/auth-form";
+import { getCurrentSession } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Register",
 };
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const session = await getCurrentSession();
+
+  if (session) {
+    redirect("/board");
+  }
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center px-6 py-16">
       <AuthForm mode="register" />
