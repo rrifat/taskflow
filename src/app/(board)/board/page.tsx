@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 import { CategoryCreateForm } from "@/app/(board)/_components/category-create-form";
+import { SurfaceCard } from "@/components/ui/surface-card";
 import { requireUser } from "@/lib/auth/guards";
 import { listCategoriesByUserId } from "@/lib/db/categories";
 
@@ -40,7 +41,7 @@ export default async function BoardPage() {
       </section>
 
       {categories.length === 0 ? (
-        <section className="rounded-[2rem] border border-dashed border-slate-300 bg-white/70 px-8 py-14 text-center shadow-sm">
+        <section className="rounded-4xl border border-dashed border-slate-300 bg-white/70 px-8 py-14 text-center shadow-sm">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
             No categories yet
           </p>
@@ -65,16 +66,17 @@ export default async function BoardPage() {
               </p>
             </div>
             <p className="text-sm text-slate-500">
-              {categories.length} {categories.length === 1 ? "column" : "columns"}
+              {categories.length}{" "}
+              {categories.length === 1 ? "column" : "columns"}
             </p>
           </div>
 
           <div className="-mx-6 overflow-x-auto px-6 pb-4">
             <div className="flex min-w-full gap-5">
               {categories.map((category) => (
-                <article
+                <SurfaceCard
                   key={category.id}
-                  className="min-h-[20rem] w-[20rem] shrink-0 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"
+                  className="min-h-80 w-[20rem] shrink-0 p-6"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -89,12 +91,12 @@ export default async function BoardPage() {
                       {category._count.tickets}
                     </span>
                   </div>
-                  <div className="mt-8 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                  <div className="mt-8 rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
                     <p className="text-sm font-medium text-slate-600">
                       Tickets will appear here next
                     </p>
                   </div>
-                </article>
+                </SurfaceCard>
               ))}
             </div>
           </div>

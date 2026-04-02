@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import FormFieldError from "@/app/(auth)/_components/form-field-error";
+import { Button } from "@/components/ui/button";
+import { FormErrorBanner } from "@/components/ui/form-error-banner";
+import FormFieldError from "@/components/ui/form-field-error";
+import { TextInput } from "@/components/ui/text-input";
 import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
 import { createCategorySchema } from "@/lib/validation/categories";
 import { z } from "zod";
@@ -68,9 +71,9 @@ export function CategoryCreateForm() {
           <label className="sr-only" htmlFor="new-category-name">
             New category name
           </label>
-          <input
+          <TextInput
             id="new-category-name"
-            className="w-full rounded-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-500"
+            className="rounded-full"
             type="text"
             name="name"
             placeholder="Add a category"
@@ -78,20 +81,16 @@ export function CategoryCreateForm() {
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <button
-          className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 hover:cursor-pointer"
+        <Button
           type="submit"
           disabled={isSubmitting}
+          className="hover:cursor-pointer"
         >
           {isSubmitting ? "Creating..." : "Create"}
-        </button>
+        </Button>
       </div>
 
-      {errors.formErrors?.[0] ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {errors.formErrors[0]}
-        </div>
-      ) : null}
+      <FormErrorBanner message={errors.formErrors?.[0]} />
 
       <FormFieldError errors={errors.fieldErrors} fieldName="name" />
     </form>

@@ -3,11 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useReducer, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { FormErrorBanner } from "@/components/ui/form-error-banner";
+import FormFieldError from "@/components/ui/form-field-error";
+import { SurfaceCard } from "@/components/ui/surface-card";
+import { TextInput } from "@/components/ui/text-input";
 import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
 import { loginSchema, registerSchema } from "@/lib/validation/auth";
 import Link from "next/link";
 import { z } from "zod";
-import FormFieldError from "./form-field-error";
 
 type AuthMode = "login" | "register";
 
@@ -108,7 +112,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const formError = errors.formErrors?.[0];
 
   return (
-    <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
+    <SurfaceCard className="rounded-4xl p-8">
       <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
         Authentication
       </p>
@@ -120,17 +124,12 @@ export function AuthForm({ mode }: AuthFormProps) {
       </p>
 
       <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
-        {formError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {formError}
-          </div>
-        ) : null}
+        <FormErrorBanner message={formError} />
 
         {isRegister ? (
           <label className="block space-y-2">
             <span className="text-sm font-medium text-slate-800">Name</span>
-            <input
-              className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-500"
+            <TextInput
               type="text"
               name="name"
               autoComplete="name"
@@ -143,8 +142,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
         <label className="block space-y-2">
           <span className="text-sm font-medium text-slate-800">Email</span>
-          <input
-            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-500"
+          <TextInput
             type="email"
             name="email"
             autoComplete="email"
@@ -156,8 +154,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
         <label className="block space-y-2">
           <span className="text-sm font-medium text-slate-800">Password</span>
-          <input
-            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-500"
+          <TextInput
             type="password"
             name="password"
             autoComplete={isRegister ? "new-password" : "current-password"}
@@ -169,13 +166,9 @@ export function AuthForm({ mode }: AuthFormProps) {
           <FormFieldError errors={errors.fieldErrors} fieldName="password" />
         </label>
 
-        <button
-          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-          type="submit"
-          disabled={isSubmitting}
-        >
+        <Button type="submit" disabled={isSubmitting} fullWidth>
           {isSubmitting ? "Submitting..." : content.submitLabel}
-        </button>
+        </Button>
       </form>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
@@ -195,6 +188,6 @@ export function AuthForm({ mode }: AuthFormProps) {
           Back to overview
         </Link>
       </div>
-    </div>
+    </SurfaceCard>
   );
 }
