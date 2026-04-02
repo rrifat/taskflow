@@ -5,10 +5,12 @@ import { useEffect, useReducer, useState } from "react";
 import { createPortal } from "react-dom";
 import { z } from "zod";
 
+import {
+  TicketFormFields,
+  type TicketFormValues,
+} from "@/app/(board)/_components/ticket-form-fields";
 import { Button } from "@/components/ui/button";
 import { FormErrorBanner } from "@/components/ui/form-error-banner";
-import FormFieldError from "@/components/ui/form-field-error";
-import { TextInput } from "@/components/ui/text-input";
 import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
 import { createTicketSchema } from "@/lib/validation/tickets";
 
@@ -29,7 +31,10 @@ export function TicketCreateForm({
 }: TicketCreateFormProps) {
   const router = useRouter();
   const [ticketFields, setTicketFields] = useReducer(
-    (state, newFields) => ({ ...state, ...newFields }),
+    (state: TicketFormValues, newFields: Partial<TicketFormValues>) => ({
+      ...state,
+      ...newFields,
+    }),
     {
       title: "",
       description: "",
@@ -130,7 +135,7 @@ export function TicketCreateForm({
         type="button"
         variant="secondary"
         size="sm"
-        className="w-full"
+        className="w-full hover:cursor-pointer"
         onClick={() => {
           setIsExpanded(true);
           setErrors({});
@@ -186,60 +191,11 @@ export function TicketCreateForm({
 
                   <FormErrorBanner message={errors.formErrors?.[0]} />
 
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-slate-800">
-                      Title
-                    </span>
-                    <TextInput
-                      name="title"
-                      placeholder="Write a short ticket title"
-                      value={title}
-                      onChange={(event) =>
-                        setTicketFields({ title: event.target.value })
-                      }
-                    />
-                    <FormFieldError
-                      errors={errors.fieldErrors}
-                      fieldName="title"
-                    />
-                  </label>
-
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-slate-800">
-                      Description
-                    </span>
-                    <textarea
-                      className="min-h-32 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-slate-500"
-                      name="description"
-                      placeholder="Add a concise description"
-                      value={description}
-                      onChange={(event) =>
-                        setTicketFields({ description: event.target.value })
-                      }
-                    />
-                    <FormFieldError
-                      errors={errors.fieldErrors}
-                      fieldName="description"
-                    />
-                  </label>
-
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-slate-800">
-                      Expiry date
-                    </span>
-                    <TextInput
-                      type="date"
-                      name="expiryDate"
-                      value={expiryDate}
-                      onChange={(event) =>
-                        setTicketFields({ expiryDate: event.target.value })
-                      }
-                    />
-                    <FormFieldError
-                      errors={errors.fieldErrors}
-                      fieldName="expiryDate"
-                    />
-                  </label>
+                  <TicketFormFields
+                    values={{ title, description, expiryDate }}
+                    errors={errors.fieldErrors}
+                    onChange={setTicketFields}
+                  />
 
                   <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row">
                     <Button

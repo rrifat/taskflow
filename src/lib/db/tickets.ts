@@ -58,3 +58,49 @@ export async function createTicketForUser({
     });
   });
 }
+
+export async function updateTicketForUser({
+  ticketId,
+  userId,
+  title,
+  description,
+  expiryDate,
+}: {
+  ticketId: string;
+  userId: string;
+  title: string;
+  description: string;
+  expiryDate: Date;
+}) {
+  const existingTicket = await prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!existingTicket) {
+    return null;
+  }
+
+  return prisma.ticket.update({
+    where: {
+      id: ticketId,
+    },
+    data: {
+      title,
+      description,
+      expiryDate,
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      expiryDate: true,
+      order: true,
+    },
+  });
+}

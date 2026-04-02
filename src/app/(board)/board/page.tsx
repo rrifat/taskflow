@@ -1,23 +1,14 @@
 import Link from "next/link";
 import { Metadata } from "next";
 
+import { BoardColumns } from "@/app/(board)/_components/board-columns";
 import { CategoryCreateForm } from "@/app/(board)/_components/category-create-form";
-import { TicketCreateForm } from "@/app/(board)/_components/ticket-create-form";
-import { SurfaceCard } from "@/components/ui/surface-card";
 import { requireUser } from "@/lib/auth/guards";
 import { listCategoriesByUserId } from "@/lib/db/categories";
 
 export const metadata: Metadata = {
   title: "Board",
 };
-
-function formatExpiryDate(value: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(value);
-}
 
 export default async function BoardPage() {
   const session = await requireUser();
@@ -80,64 +71,15 @@ export default async function BoardPage() {
             </p>
           </div>
 
-          <div className="-mx-6 overflow-x-auto px-6 pb-4">
-            <div className="flex min-w-full gap-5">
-              {categories.map((category) => (
-                <SurfaceCard
-                  key={category.id}
-                  className="flex min-h-80 w-[20rem] shrink-0 flex-col p-6"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                        Column {category.order + 1}
-                      </p>
-                      <h2 className="mt-3 text-xl font-semibold tracking-tight text-slate-950">
-                        {category.name}
-                      </h2>
-                    </div>
-                    <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-                      {category._count.tickets}
-                    </span>
-                  </div>
-                  <div className="mt-6 flex-1 space-y-3">
-                    {category.tickets.length === 0 ? (
-                      <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
-                        <p className="text-sm font-medium text-slate-600">
-                          Tickets will appear here next
-                        </p>
-                      </div>
-                    ) : (
-                      category.tickets.map((ticket) => (
-                        <article
-                          key={ticket.id}
-                          className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <h3 className="text-sm font-semibold text-slate-950">
-                              {ticket.title}
-                            </h3>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
-                              {formatExpiryDate(ticket.expiryDate)}
-                            </span>
-                          </div>
-                          <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
-                            {ticket.description}
-                          </p>
-                        </article>
-                      ))
-                    )}
-                  </div>
-                  <div className="mt-6">
-                    <TicketCreateForm
-                      categoryId={category.id}
-                      categoryName={category.name}
-                    />
-                  </div>
-                </SurfaceCard>
-              ))}
-            </div>
-          </div>
+          <BoardColumns
+            categories={categories.map((category) => ({
+              ...category,
+              tickets: category.tickets.map((ticket) => ({
+                ...ticket,
+                expiryDate: ticket.expiryDate.toISOString(),
+              })),
+            }))}
+          />
         </section>
       )}
     </main>
