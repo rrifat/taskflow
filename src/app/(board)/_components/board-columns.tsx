@@ -110,7 +110,6 @@ function getHistoryLabel(
     ) {
       return `Moved from ${fromCategoryName} to ${toCategoryName}`;
     }
-    console.log({ fromCategoryName, toCategoryName });
     const nextOrder = entry.changedFields?.order?.to;
 
     if (typeof nextOrder === "string") {
@@ -144,19 +143,12 @@ function getHistoryLabel(
 function getHistoryTypeBadgeClassName(
   entryType: Ticket["history"][number]["type"],
 ) {
-  if (entryType === "CREATED") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (entryType === "UPDATED") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
-  }
-
-  if (entryType === "MOVED") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  return "border-slate-200 bg-slate-100 text-slate-700";
+  return {
+    CREATED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    UPDATED: "border-sky-200 bg-sky-50 text-sky-700",
+    MOVED: "border-amber-200 bg-amber-50 text-amber-700",
+    DELETED: "border-slate-200 bg-slate-100 text-slate-700",
+  }[entryType];
 }
 
 function TicketEditDrawer({
@@ -452,6 +444,9 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [movingCategoryId, setMovingCategoryId] = useState<string | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(
+    null,
+  );
   const categoryNames = Object.fromEntries(
     boardCategories.map((category) => [category.id, category.name]),
   );
@@ -615,6 +610,59 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
     }
   }
 
+  async function handleCategoryDelete(
+    categoryId: string,
+    categoryName: string,
+  ) {
+    if (
+      deletingCategoryId ||
+      !window.confirm(
+        `Delete the "${categoryName}" category? Only empty categories can be deleted.`,
+      )
+    ) {
+      return;
+    }
+
+    const nextCategories = boardCategories
+      .filter((category) => category.id !== categoryId)
+      .map((category, index) => ({
+        ...category,
+        order: index,
+      }));
+
+    setBoardCategories(nextCategories);
+    setMoveError(null);
+    setDeletingCategoryId(categoryId);
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: "DELETE",
+      });
+
+      const payload = (await response.json().catch(() => null)) as unknown;
+
+      if (!response.ok) {
+        setMoveError(
+          normalizeFormErrors(payload).formErrors?.[0] ??
+            "Unable to delete this category right now. Please try again.",
+        );
+        setBoardCategories(categories);
+        router.refresh();
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setMoveError(
+        "Unable to delete this category right now. Please try again.",
+      );
+      setBoardCategories(categories);
+      router.refresh();
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  }
+
   return (
     <>
       <FormErrorBanner message={moveError ?? undefined} />
@@ -713,6 +761,23 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                       }
                     >
                       →
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="min-h-8 min-w-8 px-0 hover:cursor-pointer"
+                      disabled={
+                        category._count.tickets > 0 ||
+                        deletingCategoryId === category.id ||
+                        movingCategoryId === category.id
+                      }
+                      aria-label={`Delete ${category.name}`}
+                      onClick={() =>
+                        void handleCategoryDelete(category.id, category.name)
+                      }
+                    >
+                      ×
                     </Button>
                   </div>
                 </div>

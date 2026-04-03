@@ -124,3 +124,61 @@ export async function moveCategoryForUser({
     return { id: categoryId, unchanged: false as const };
   });
 }
+
+export async function deleteCategoryForUser({
+  categoryId,
+  userId,
+}: {
+  categoryId: string;
+  userId: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const category = await tx.category.findFirst({
+      where: {
+        id: categoryId,
+        userId,
+      },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            tickets: true,
+          },
+        },
+      },
+    });
+
+    if (!category) {
+      return null;
+    }
+
+    if (category._count.tickets > 0) {
+      return { id: categoryId, blocked: true as const };
+    }
+
+    await tx.category.delete({
+      where: {
+        id: categoryId,
+      },
+    });
+
+    const remainingCategories = await tx.category.findMany({
+      where: { userId },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+      },
+    });
+
+    await Promise.all(
+      remainingCategories.map((remainingCategory, index) =>
+        tx.category.update({
+          where: { id: remainingCategory.id },
+          data: { order: index },
+        }),
+      ),
+    );
+
+    return { id: categoryId, blocked: false as const };
+  });
+}
