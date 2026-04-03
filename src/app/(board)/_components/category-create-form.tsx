@@ -61,34 +61,35 @@ export function CategoryCreateForm() {
   }
 
   return (
-    <form
-      className="w-full max-w-md space-y-3"
-      onSubmit={handleSubmit}
-      noValidate
-    >
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="min-w-0 flex-1">
+    <form className="w-full space-y-3" onSubmit={handleSubmit} noValidate>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="min-w-0 space-y-2">
           <label className="sr-only" htmlFor="new-category-name">
             New category name
           </label>
           <TextInput
             id="new-category-name"
-            className="rounded-full"
+            className="min-h-13 rounded-[1.1rem] border-slate-200 bg-white/95 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] placeholder:text-slate-400 focus:border-teal-500"
             type="text"
             name="name"
             placeholder="Add a category"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
+
+          <FormFieldError errors={errors.fieldErrors} fieldName="name" />
         </div>
-        <Button type="submit" disabled={isSubmitting}>
+
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="min-h-13 w-full px-6 shadow-[0_18px_35px_-22px_rgba(15,118,110,0.9)] sm:w-auto"
+        >
           {isSubmitting ? "Creating..." : "Create"}
         </Button>
       </div>
 
       <FormErrorBanner message={errors.formErrors?.[0]} />
-
-      <FormFieldError errors={errors.fieldErrors} fieldName="name" />
     </form>
   );
 }

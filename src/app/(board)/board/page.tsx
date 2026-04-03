@@ -6,6 +6,7 @@ import { LogoutButton } from "@/app/(board)/_components/logout-button";
 import { requireUser } from "@/lib/auth/guards";
 import { listCategoriesByUserId } from "@/lib/db/categories";
 import { getCurrentTimeMs, getIsoDateDaysFromNow } from "@/lib/utils/dates";
+import { TicketChangedFields } from "@/lib/db/tickets";
 
 export const metadata: Metadata = {
   title: "Board",
@@ -16,26 +17,69 @@ export default async function BoardPage() {
   const categories = await listCategoriesByUserId(session.user.id);
   const renderedAtMs = getCurrentTimeMs();
   const defaultTicketExpiryDate = getIsoDateDaysFromNow(renderedAtMs, 7);
+  const categoryCountLabel =
+    categories.length === 1
+      ? "1 active column"
+      : `${categories.length} active columns`;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10">
-      <section className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="lg:min-w-0 lg:flex-1">
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-teal-700">
-            Workspace board
-          </p>
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-            {session.user.name}&apos;s Board
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-            Shape your work across movable columns and keep ticket changes easy
-            to scan.
-          </p>
-        </div>
-        <div className="flex w-full flex-col items-stretch gap-3 lg:w-[24rem] lg:shrink-0 lg:items-end">
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-10 px-6 py-8 sm:py-10">
+      <section className="relative overflow-hidden rounded-4xl border border-white/70 bg-white/80 px-6 py-7 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.45)] ring-1 ring-slate-200/70 backdrop-blur sm:px-8 sm:py-8">
+        <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-r from-teal-100/80 via-white/20 to-sky-100/70" />
+        <div className="absolute -left-12 top-14 h-28 w-28 rounded-full bg-teal-200/30 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-36 w-36 rounded-full bg-sky-200/30 blur-3xl" />
+        <div className="relative flex justify-end">
           <LogoutButton />
-          <div className="w-full">
-            <CategoryCreateForm />
+        </div>
+
+        <div className="relative mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_24rem] xl:items-start">
+          <div className="min-w-0">
+            <p className="text-sm font-medium uppercase tracking-[0.22em] text-teal-700">
+              Workspace board
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              {session.user.name}&apos;s Board
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:text-[15px]">
+              Shape your work across movable columns and keep ticket changes
+              easy to scan. The board stays flexible while the layout keeps your
+              key actions close at hand.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-800">
+                {categoryCountLabel}
+              </span>
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-sm text-slate-600">
+                Drag, edit, and organize tickets with a calmer flow
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-slate-200/80 bg-white/88 p-4 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.55)] sm:p-5">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+              Quick actions
+            </p>
+            <h2 className="mt-2 text-lg font-semibold tracking-tight text-slate-950">
+              Manage your board
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Add the next stage in your workflow and keep the board structure
+              feeling deliberate.
+            </p>
+
+            <div className="mt-5 rounded-3xl border border-slate-200/80 bg-slate-50/80 p-4 sm:p-5">
+              <p className="text-sm font-semibold text-slate-900">
+                Add a new column
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Create the next stage in your workflow, from backlog to review.
+              </p>
+
+              <div className="mt-4">
+                <CategoryCreateForm />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -80,6 +124,7 @@ export default async function BoardPage() {
                 history: ticket.history.map((entry) => ({
                   ...entry,
                   createdAt: entry.createdAt.toISOString(),
+                  changedFields: entry.changedFields as TicketChangedFields,
                 })),
               })),
             }))}

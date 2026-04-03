@@ -2,7 +2,7 @@ import { TicketHistoryType } from "@generated/prisma/client";
 
 import { prisma } from "@/lib/db/client";
 
-type TicketChangedFields = Record<
+export type TicketChangedFields = Record<
   string,
   {
     from: string;
@@ -326,7 +326,11 @@ export async function moveTicketForUser({
         toCategoryId: destinationCategoryId,
         changedFields: {
           order: {
-            from: String(sourceTickets.findIndex((sourceTicket) => sourceTicket.id === ticketId)),
+            from: String(
+              sourceTickets.findIndex(
+                (sourceTicket) => sourceTicket.id === ticketId,
+              ),
+            ),
             to: String(clampedIndex),
           },
         },

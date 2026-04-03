@@ -31,6 +31,7 @@ import {
 } from "@/lib/board/ticket-dnd";
 import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
 import { updateTicketSchema } from "@/lib/validation/tickets-update";
+import { type TicketChangedFields } from "@/lib/db/tickets";
 
 type Ticket = {
   id: string;
@@ -43,17 +44,11 @@ type Ticket = {
     type: "CREATED" | "UPDATED" | "MOVED" | "DELETED";
     fromCategoryId: string | null;
     toCategoryId: string | null;
-    changedFields: Record<
-      string,
-      {
-        from: string;
-        to: string;
-      }
-    > | null;
+    changedFields: TicketChangedFields | null;
     createdAt: string;
   }[];
 };
-
+/** */
 type Category = {
   id: string;
   name: string;

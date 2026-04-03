@@ -36,8 +36,8 @@ export function LogoutButton() {
     <Button
       type="button"
       variant="secondary"
-      size="md"
-      className="border-0 bg-transparent px-0 text-slate-500 shadow-none hover:cursor-pointer hover:bg-transparent hover:text-slate-800"
+      size="sm"
+      className="border-slate-200 bg-white/90 px-4 text-slate-600 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.75)] hover:border-slate-300 hover:bg-white hover:text-slate-900"
       disabled={isSubmitting}
       onClick={handleLogout}
     >
