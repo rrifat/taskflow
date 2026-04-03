@@ -81,11 +81,7 @@ export function CategoryCreateForm() {
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="hover:cursor-pointer"
-        >
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Creating..." : "Create"}
         </Button>
       </div>

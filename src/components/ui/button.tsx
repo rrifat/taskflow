@@ -9,10 +9,11 @@ type ButtonProps = ComponentPropsWithoutRef<"button"> & {
 };
 
 const baseClassName =
-  "inline-flex items-center justify-center rounded-full font-medium transition disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center rounded-full font-medium transition hover:cursor-pointer disabled:cursor-not-allowed";
 
 const variantClassNames = {
-  primary: "bg-slate-950 text-white hover:bg-slate-800 disabled:bg-slate-400",
+  primary:
+    "bg-teal-700 text-white shadow-sm hover:bg-teal-800 disabled:bg-teal-700/70 disabled:text-white/90",
   secondary:
     "border border-slate-300 bg-white text-slate-900 shadow-sm hover:border-slate-400 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400",
   destructive:

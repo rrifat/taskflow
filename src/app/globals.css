@@ -6,6 +6,9 @@
     --color-surface: #ffffff;
     --color-surface-muted: #eef2ff;
     --color-border-subtle: #e2e8f0;
+    --color-accent: #0f766e;
+    --color-accent-strong: #115e59;
+    --color-accent-soft: #ccfbf1;
     --font-sans: "Inter", "Segoe UI", Arial, sans-serif;
     --font-mono: "SFMono-Regular", "SF Mono", Consolas, monospace;
 }
@@ -20,7 +23,9 @@ html {
 }
 
 body {
-    background: var(--color-background);
+    background:
+        radial-gradient(circle at top left, rgba(204, 251, 241, 0.55), transparent 28%),
+        linear-gradient(180deg, #f8fafc 0%, #f5f7fb 100%);
     color: var(--color-foreground);
     font-family: var(--font-sans);
 }

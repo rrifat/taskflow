@@ -113,7 +113,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <SurfaceCard className="rounded-4xl p-8">
-      <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
+      <p className="text-sm font-medium uppercase tracking-[0.18em] text-teal-700">
         Authentication
       </p>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">
@@ -176,17 +176,19 @@ export function AuthForm({ mode }: AuthFormProps) {
           {content.alternateLabel}{" "}
           <Link
             href={content.alternateHref}
-            className="font-medium text-slate-950 underline-offset-4 hover:underline"
+            className="font-medium text-teal-800 underline-offset-4 hover:underline"
           >
             {content.alternateCta}
           </Link>
         </p>
-        <Link
-          href="/"
-          className="font-medium text-slate-950 underline-offset-4 hover:underline"
-        >
-          Back to overview
-        </Link>
+        {mode === "register" && (
+          <Link
+            href="/login"
+            className="font-medium text-teal-800 underline-offset-4 hover:underline"
+          >
+            Back to sign in
+          </Link>
+        )}
       </div>
     </SurfaceCard>
   );
