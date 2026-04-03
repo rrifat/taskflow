@@ -53,15 +53,22 @@ export function AuthForm({ mode }: AuthFormProps) {
     },
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   const { name, email, password } = formFields;
 
   const isRegister = mode === "register";
   const content = authContent[mode];
+  const isBusy = isSubmitting || isRedirecting;
 
   async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isBusy) {
+      return;
+    }
+
     setErrors({});
 
     const payload = isRegister
@@ -95,16 +102,17 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       if (!response.ok) {
         setErrors(normalizeFormErrors(payload));
+        setIsSubmitting(false);
         return;
       }
 
-      router.push("/board");
+      setIsRedirecting(true);
+      router.replace("/board");
       router.refresh();
     } catch {
       setErrors({
         formErrors: ["Unable to reach the server right now. Please try again."],
       });
-    } finally {
       setIsSubmitting(false);
     }
   }
@@ -166,8 +174,8 @@ export function AuthForm({ mode }: AuthFormProps) {
           <FormFieldError errors={errors.fieldErrors} fieldName="password" />
         </label>
 
-        <Button type="submit" disabled={isSubmitting} fullWidth>
-          {isSubmitting ? "Submitting..." : content.submitLabel}
+        <Button type="submit" disabled={isBusy} fullWidth>
+          {isBusy ? "Submitting..." : content.submitLabel}
         </Button>
       </form>
 
