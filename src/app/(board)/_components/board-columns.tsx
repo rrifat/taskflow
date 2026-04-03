@@ -22,6 +22,7 @@ import {
   getTicketExpiryLabel,
   getTicketExpiryState,
 } from "@/lib/board/ticket-expiry";
+import { formatUtcDate, formatUtcTimestamp } from "@/lib/utils/dates";
 import {
   getNormalizedDropTarget,
   moveTicketInCategories,
@@ -65,27 +66,12 @@ type Category = {
 
 type BoardColumnsProps = {
   categories: Category[];
+  renderedAtMs: number;
+  defaultTicketExpiryDate: string;
 };
-
-function formatExpiryDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
-}
 
 function toDateInputValue(value: string) {
   return value.slice(0, 10);
-}
-
-function formatHistoryTimestamp(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function getHistoryLabel(
@@ -160,6 +146,7 @@ function TicketEditDrawer({
   categoryName,
   ticket,
   categoryNames,
+  referenceNowMs,
   descriptionDraft,
   onDescriptionDraftChange,
   onDescriptionDraftClear,
@@ -168,6 +155,7 @@ function TicketEditDrawer({
   categoryName: string;
   ticket: Ticket;
   categoryNames: Record<string, string>;
+  referenceNowMs: number;
   descriptionDraft?: string;
   onDescriptionDraftChange: (ticketId: string, value: string) => void;
   onDescriptionDraftClear: (ticketId: string) => void;
@@ -193,8 +181,14 @@ function TicketEditDrawer({
   const hasDraftDescription =
     typeof descriptionDraft === "string" &&
     descriptionDraft !== ticket.description;
-  const ticketExpiryState = getTicketExpiryState(ticket.expiryDate);
-  const ticketExpiryLabel = getTicketExpiryLabel(ticket.expiryDate);
+  const ticketExpiryState = getTicketExpiryState(
+    ticket.expiryDate,
+    referenceNowMs,
+  );
+  const ticketExpiryLabel = getTicketExpiryLabel(
+    ticket.expiryDate,
+    referenceNowMs,
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -382,7 +376,7 @@ function TicketEditDrawer({
                 {ticketExpiryLabel}
               </span>
               <span className="text-sm text-slate-600">
-                Due {formatExpiryDate(ticket.expiryDate)}
+                Due {formatUtcDate(ticket.expiryDate)}
               </span>
             </div>
           </div>
@@ -428,7 +422,7 @@ function TicketEditDrawer({
                         </p>
 
                         <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">
-                          {formatHistoryTimestamp(entry.createdAt)}
+                          {formatUtcTimestamp(entry.createdAt)}
                         </p>
                       </div>
                       <span
@@ -453,9 +447,14 @@ function TicketEditDrawer({
   );
 }
 
-export function BoardColumns({ categories }: BoardColumnsProps) {
+export function BoardColumns({
+  categories,
+  renderedAtMs,
+  defaultTicketExpiryDate,
+}: BoardColumnsProps) {
   const router = useRouter();
   const [boardCategories, setBoardCategories] = useState(categories);
+  const [referenceNowMs, setReferenceNowMs] = useState(renderedAtMs);
   const [activeTicket, setActiveTicket] = useState<{
     categoryName: string;
     ticket: Ticket;
@@ -477,6 +476,10 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
   useEffect(() => {
     setBoardCategories(categories);
   }, [categories]);
+
+  useEffect(() => {
+    setReferenceNowMs(Date.now());
+  }, []);
 
   function handleDescriptionDraftChange(ticketId: string, value: string) {
     setDescriptionDrafts((current) => ({
@@ -916,13 +919,22 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                       <button
                         type="button"
                         draggable
-                        data-expiry-state={getTicketExpiryState(ticket.expiryDate)}
+                        data-expiry-state={getTicketExpiryState(
+                          ticket.expiryDate,
+                          referenceNowMs,
+                        )}
                         className={`block w-full rounded-3xl border px-4 py-4 text-left transition hover:cursor-pointer ${
                           dragState?.ticketId === ticket.id
                             ? "border-slate-300 bg-white opacity-60"
-                            : getTicketExpiryState(ticket.expiryDate) === "overdue"
+                            : getTicketExpiryState(
+                                  ticket.expiryDate,
+                                  referenceNowMs,
+                                ) === "overdue"
                               ? "border-red-200 bg-red-50/40 hover:border-red-300 hover:bg-white"
-                              : getTicketExpiryState(ticket.expiryDate) === "dueSoon"
+                              : getTicketExpiryState(
+                                    ticket.expiryDate,
+                                    referenceNowMs,
+                                  ) === "dueSoon"
                                 ? "border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-white"
                                 : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
                         }`}
@@ -974,13 +986,19 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                           <div className="flex shrink-0 flex-col items-end gap-1">
                             <span
                               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] ${getTicketExpiryBadgeClassName(
-                                getTicketExpiryState(ticket.expiryDate),
+                                getTicketExpiryState(
+                                  ticket.expiryDate,
+                                  referenceNowMs,
+                                ),
                               )}`}
                             >
-                              {getTicketExpiryLabel(ticket.expiryDate)}
+                              {getTicketExpiryLabel(
+                                ticket.expiryDate,
+                                referenceNowMs,
+                              )}
                             </span>
                             <span className="text-xs text-slate-500">
-                              {formatExpiryDate(ticket.expiryDate)}
+                              {formatUtcDate(ticket.expiryDate)}
                             </span>
                           </div>
                         </div>
@@ -1048,6 +1066,7 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                 <TicketCreateForm
                   categoryId={category.id}
                   categoryName={category.name}
+                  defaultExpiryDate={defaultTicketExpiryDate}
                 />
               </div>
             </SurfaceCard>
@@ -1060,6 +1079,7 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
           categoryName={activeTicket.categoryName}
           ticket={activeTicket.ticket}
           categoryNames={categoryNames}
+          referenceNowMs={referenceNowMs}
           descriptionDraft={descriptionDrafts[activeTicket.ticket.id]}
           onDescriptionDraftChange={handleDescriptionDraftChange}
           onDescriptionDraftClear={handleDescriptionDraftClear}

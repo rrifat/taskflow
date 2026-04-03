@@ -2,14 +2,19 @@ export type TicketExpiryState = "normal" | "dueSoon" | "overdue";
 
 const DUE_SOON_WINDOW_MS = 1000 * 60 * 60 * 48;
 
+function toTimeMs(value: number | Date) {
+  return value instanceof Date ? value.getTime() : value;
+}
+
 export function getTicketExpiryState(
   expiryDate: string | Date,
+  referenceTime: number | Date = Date.now(),
 ): TicketExpiryState {
   const expiryTime =
     expiryDate instanceof Date
       ? expiryDate.getTime()
       : new Date(expiryDate).getTime();
-  const now = Date.now();
+  const now = toTimeMs(referenceTime);
 
   if (expiryTime < now) {
     return "overdue";
@@ -22,8 +27,11 @@ export function getTicketExpiryState(
   return "normal";
 }
 
-export function getTicketExpiryLabel(expiryDate: string | Date) {
-  const state = getTicketExpiryState(expiryDate);
+export function getTicketExpiryLabel(
+  expiryDate: string | Date,
+  referenceTime: number | Date = Date.now(),
+) {
+  const state = getTicketExpiryState(expiryDate, referenceTime);
 
   return {
     overdue: "Overdue",

@@ -5,6 +5,7 @@ import { CategoryCreateForm } from "@/app/(board)/_components/category-create-fo
 import { LogoutButton } from "@/app/(board)/_components/logout-button";
 import { requireUser } from "@/lib/auth/guards";
 import { listCategoriesByUserId } from "@/lib/db/categories";
+import { getCurrentTimeMs, getIsoDateDaysFromNow } from "@/lib/utils/dates";
 
 export const metadata: Metadata = {
   title: "Board",
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
 export default async function BoardPage() {
   const session = await requireUser();
   const categories = await listCategoriesByUserId(session.user.id);
+  const renderedAtMs = getCurrentTimeMs();
+  const defaultTicketExpiryDate = getIsoDateDaysFromNow(renderedAtMs, 7);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10">
@@ -80,6 +83,8 @@ export default async function BoardPage() {
                 })),
               })),
             }))}
+            renderedAtMs={renderedAtMs}
+            defaultTicketExpiryDate={defaultTicketExpiryDate}
           />
         </section>
       )}

@@ -11,23 +11,20 @@ import {
 } from "@/app/(board)/_components/ticket-form-fields";
 import { Button } from "@/components/ui/button";
 import { FormErrorBanner } from "@/components/ui/form-error-banner";
+import { getIsoDateDaysFromNow } from "@/lib/utils/dates";
 import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
 import { createTicketSchema } from "@/lib/validation/tickets";
 
 type TicketCreateFormProps = {
   categoryId: string;
   categoryName: string;
+  defaultExpiryDate: string;
 };
-
-function getDefaultExpiryDate() {
-  const date = new Date();
-  date.setDate(date.getDate() + 7);
-  return date.toISOString().slice(0, 10);
-}
 
 export function TicketCreateForm({
   categoryId,
   categoryName,
+  defaultExpiryDate,
 }: TicketCreateFormProps) {
   const router = useRouter();
   const [ticketFields, setTicketFields] = useReducer(
@@ -38,7 +35,7 @@ export function TicketCreateForm({
     {
       title: "",
       description: "",
-      expiryDate: getDefaultExpiryDate(),
+      expiryDate: defaultExpiryDate,
     },
   );
   const { title, description, expiryDate } = ticketFields;
@@ -116,7 +113,7 @@ export function TicketCreateForm({
       setTicketFields({
         title: "",
         description: "",
-        expiryDate: getDefaultExpiryDate(),
+        expiryDate: getIsoDateDaysFromNow(Date.now(), 7),
       });
       setIsExpanded(false);
       router.refresh();
