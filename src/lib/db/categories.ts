@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/client";
+import type { CategoryDirection } from "@/lib/board/category-order";
 
 export async function listCategoriesByUserId(userId: string) {
   return prisma.category.findMany({
@@ -55,5 +56,57 @@ export async function createCategoryForUser({
         order: true,
       },
     });
+  });
+}
+
+export async function moveCategoryForUser({
+  categoryId,
+  userId,
+  direction,
+}: {
+  categoryId: string;
+  userId: string;
+  direction: CategoryDirection;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const categories = await tx.category.findMany({
+      where: { userId },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        order: true,
+      },
+    });
+
+    const currentIndex = categories.findIndex(
+      (category) => category.id === categoryId,
+    );
+
+    if (currentIndex === -1) {
+      return null;
+    }
+
+    const targetIndex =
+      direction === "left" ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= categories.length) {
+      return { id: categoryId, unchanged: true as const };
+    }
+
+    const currentCategory = categories[currentIndex];
+    const targetCategory = categories[targetIndex];
+
+    await Promise.all([
+      tx.category.update({
+        where: { id: currentCategory.id },
+        data: { order: targetCategory.order },
+      }),
+      tx.category.update({
+        where: { id: targetCategory.id },
+        data: { order: currentCategory.order },
+      }),
+    ]);
+
+    return { id: categoryId, unchanged: false as const };
   });
 }

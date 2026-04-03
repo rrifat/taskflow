@@ -14,6 +14,10 @@ import { Button } from "@/components/ui/button";
 import { FormErrorBanner } from "@/components/ui/form-error-banner";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import {
+  moveCategoryInBoard,
+  type CategoryDirection,
+} from "@/lib/board/category-order";
+import {
   getNormalizedDropTarget,
   moveTicketInCategories,
   type DragState,
@@ -89,7 +93,8 @@ function TicketEditDrawer({
 
   const { title, description, expiryDate } = ticketFields;
   const hasDraftDescription =
-    typeof descriptionDraft === "string" && descriptionDraft !== ticket.description;
+    typeof descriptionDraft === "string" &&
+    descriptionDraft !== ticket.description;
 
   useEffect(() => {
     setIsMounted(true);
@@ -258,6 +263,7 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [movingCategoryId, setMovingCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     setBoardCategories(categories);
@@ -350,7 +356,10 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
       const payload = (await response.json().catch(() => null)) as unknown;
 
       if (!response.ok) {
-        setMoveError(normalizeFormErrors(payload).formErrors?.[0] ?? "Unable to move this ticket right now. Please try again.");
+        setMoveError(
+          normalizeFormErrors(payload).formErrors?.[0] ??
+            "Unable to move this ticket right now. Please try again.",
+        );
         setBoardCategories(categories);
         router.refresh();
         return;
@@ -364,15 +373,66 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
     }
   }
 
+  async function handleCategoryMove(
+    categoryId: string,
+    direction: CategoryDirection,
+  ) {
+    const nextCategories = moveCategoryInBoard(
+      boardCategories,
+      categoryId,
+      direction,
+    );
+
+    if (nextCategories === boardCategories) {
+      return;
+    }
+
+    setBoardCategories(nextCategories);
+    setMoveError(null);
+    setMovingCategoryId(categoryId);
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}/move`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as unknown;
+
+      if (!response.ok) {
+        setMoveError(
+          normalizeFormErrors(payload).formErrors?.[0] ??
+            "Unable to reorder this category right now. Please try again.",
+        );
+        setBoardCategories(categories);
+        router.refresh();
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setMoveError(
+        "Unable to reorder this category right now. Please try again.",
+      );
+      setBoardCategories(categories);
+      router.refresh();
+    } finally {
+      setMovingCategoryId(null);
+    }
+  }
+
   return (
     <>
       <FormErrorBanner message={moveError ?? undefined} />
       <div className="-mx-6 overflow-x-auto px-6 pb-4">
         <div className="flex min-w-full gap-5">
-          {boardCategories.map((category) => (
+          {boardCategories.map((category, categoryIndex) => (
             <SurfaceCard
               key={category.id}
-              className="flex min-h-80 w-[20rem] shrink-0 flex-col p-6"
+              className="flex min-h-80 w-100 shrink-0 flex-col p-6"
               onDragOver={(event) => {
                 if (!dragState) {
                   return;
@@ -426,9 +486,44 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                     {category.name}
                   </h2>
                 </div>
-                <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
-                  {category._count.tickets}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex min-w-10 items-center justify-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                    {category._count.tickets}
+                  </span>
+                  <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="min-h-8 min-w-8 border-0 px-0 shadow-none hover:cursor-pointer"
+                      disabled={
+                        categoryIndex === 0 || movingCategoryId === category.id
+                      }
+                      aria-label={`Move ${category.name} left`}
+                      onClick={() =>
+                        void handleCategoryMove(category.id, "left")
+                      }
+                    >
+                      ←
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="min-h-8 min-w-8 border-0 px-0 shadow-none hover:cursor-pointer"
+                      disabled={
+                        categoryIndex === boardCategories.length - 1 ||
+                        movingCategoryId === category.id
+                      }
+                      aria-label={`Move ${category.name} right`}
+                      onClick={() =>
+                        void handleCategoryMove(category.id, "right")
+                      }
+                    >
+                      →
+                    </Button>
+                  </div>
+                </div>
               </div>
               <div className="mt-6 flex-1 space-y-3">
                 {category.tickets.length === 0 ? (
@@ -520,7 +615,8 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
 
                           if (
                             !dropTarget ||
-                            dropTarget.categoryId !== normalizedTarget.categoryId ||
+                            dropTarget.categoryId !==
+                              normalizedTarget.categoryId ||
                             dropTarget.index !== normalizedTarget.index
                           ) {
                             setDropTarget(normalizedTarget);
@@ -547,23 +643,22 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                         onDragStart={(event) => {
                           event.dataTransfer.effectAllowed = "move";
                           event.dataTransfer.setData("text/plain", ticket.id);
-                                setDragState({
-                                  ticketId: ticket.id,
-                                  sourceCategoryId: category.id,
-                                  sourceIndex: index,
-                                });
-                                setDropTarget(null);
-                                setMoveError(null);
-                              }}
+                          setDragState({
+                            ticketId: ticket.id,
+                            sourceCategoryId: category.id,
+                            sourceIndex: index,
+                          });
+                          setDropTarget(null);
+                          setMoveError(null);
+                        }}
                         onDragEnd={() => {
                           setDragState(null);
                           setDropTarget(null);
                         }}
-                        onDragOver={(event) =>
-                          {
-                            event.stopPropagation();
-                            handleCardDragOver(event, category.id, index);
-                          }}
+                        onDragOver={(event) => {
+                          event.stopPropagation();
+                          handleCardDragOver(event, category.id, index);
+                        }}
                         onDrop={(event) => {
                           if (!dragState) {
                             return;
