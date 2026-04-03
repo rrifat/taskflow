@@ -18,6 +18,11 @@ import {
   type CategoryDirection,
 } from "@/lib/board/category-order";
 import {
+  getTicketExpiryBadgeClassName,
+  getTicketExpiryLabel,
+  getTicketExpiryState,
+} from "@/lib/board/ticket-expiry";
+import {
   getNormalizedDropTarget,
   moveTicketInCategories,
   type DragState,
@@ -188,6 +193,8 @@ function TicketEditDrawer({
   const hasDraftDescription =
     typeof descriptionDraft === "string" &&
     descriptionDraft !== ticket.description;
+  const ticketExpiryState = getTicketExpiryState(ticket.expiryDate);
+  const ticketExpiryLabel = getTicketExpiryLabel(ticket.expiryDate);
 
   useEffect(() => {
     setIsMounted(true);
@@ -363,6 +370,22 @@ function TicketEditDrawer({
               }
             }}
           />
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+              Expiry status
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.14em] ${getTicketExpiryBadgeClassName(ticketExpiryState)}`}
+              >
+                {ticketExpiryLabel}
+              </span>
+              <span className="text-sm text-slate-600">
+                Due {formatExpiryDate(ticket.expiryDate)}
+              </span>
+            </div>
+          </div>
 
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row">
             <Button
@@ -893,10 +916,15 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                       <button
                         type="button"
                         draggable
+                        data-expiry-state={getTicketExpiryState(ticket.expiryDate)}
                         className={`block w-full rounded-3xl border px-4 py-4 text-left transition hover:cursor-pointer ${
                           dragState?.ticketId === ticket.id
                             ? "border-slate-300 bg-white opacity-60"
-                            : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                            : getTicketExpiryState(ticket.expiryDate) === "overdue"
+                              ? "border-red-200 bg-red-50/40 hover:border-red-300 hover:bg-white"
+                              : getTicketExpiryState(ticket.expiryDate) === "dueSoon"
+                                ? "border-amber-200 bg-amber-50/40 hover:border-amber-300 hover:bg-white"
+                                : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
                         }`}
                         onDragStart={(event) => {
                           event.dataTransfer.effectAllowed = "move";
@@ -943,9 +971,18 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                               {ticket.title}
                             </h3>
                           </div>
-                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
-                            {formatExpiryDate(ticket.expiryDate)}
-                          </span>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <span
+                              className={`rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] ${getTicketExpiryBadgeClassName(
+                                getTicketExpiryState(ticket.expiryDate),
+                              )}`}
+                            >
+                              {getTicketExpiryLabel(ticket.expiryDate)}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {formatExpiryDate(ticket.expiryDate)}
+                            </span>
+                          </div>
                         </div>
                         <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
                           {ticket.description}

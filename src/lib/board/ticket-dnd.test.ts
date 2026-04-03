@@ -5,7 +5,7 @@ import {
   getNormalizedDropTarget,
   moveTicketInCategories,
   type DragState,
-} from "./ticket-dnd.ts";
+} from "./ticket-dnd";
 
 type Ticket = {
   id: string;
@@ -77,12 +77,18 @@ test("returns null for same-position no-op drops", () => {
 test("reorders tickets downward within the same category", () => {
   const categories = makeCategories();
 
-  const result = moveTicketInCategories(categories, "a", "backlog", "backlog", 1);
+  const result = moveTicketInCategories(
+    categories,
+    "a",
+    "backlog",
+    "backlog",
+    1,
+  );
 
   assert.deepEqual(
-    result.find((category) => category.id === "backlog")?.tickets.map(
-      (ticket) => `${ticket.id}:${ticket.order}`,
-    ),
+    result
+      .find((category) => category.id === "backlog")
+      ?.tickets.map((ticket) => `${ticket.id}:${ticket.order}`),
     ["b:0", "a:1", "c:2"],
   );
 });
@@ -90,12 +96,18 @@ test("reorders tickets downward within the same category", () => {
 test("reorders tickets upward within the same category", () => {
   const categories = makeCategories();
 
-  const result = moveTicketInCategories(categories, "c", "backlog", "backlog", 0);
+  const result = moveTicketInCategories(
+    categories,
+    "c",
+    "backlog",
+    "backlog",
+    0,
+  );
 
   assert.deepEqual(
-    result.find((category) => category.id === "backlog")?.tickets.map(
-      (ticket) => `${ticket.id}:${ticket.order}`,
-    ),
+    result
+      .find((category) => category.id === "backlog")
+      ?.tickets.map((ticket) => `${ticket.id}:${ticket.order}`),
     ["c:0", "a:1", "b:2"],
   );
 });

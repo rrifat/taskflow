@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  getTicketExpiryLabel,
-  getTicketExpiryState,
-} from "./ticket-expiry.ts";
+import { getTicketExpiryLabel, getTicketExpiryState } from "./ticket-expiry";
 
 test("marks past dates as overdue", () => {
   const past = new Date(Date.now() - 1000 * 60).toISOString();
