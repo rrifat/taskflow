@@ -13,6 +13,12 @@ import { TicketCreateForm } from "@/app/(board)/_components/ticket-create-form";
 import { Button } from "@/components/ui/button";
 import { FormErrorBanner } from "@/components/ui/form-error-banner";
 import { SurfaceCard } from "@/components/ui/surface-card";
+import {
+  getNormalizedDropTarget,
+  moveTicketInCategories,
+  type DragState,
+  type DropTarget,
+} from "@/lib/board/ticket-dnd";
 import { normalizeFormErrors, type FormErrors } from "@/lib/utils/api-errors";
 import { updateTicketSchema } from "@/lib/validation/tickets-update";
 
@@ -38,17 +44,6 @@ type BoardColumnsProps = {
   categories: Category[];
 };
 
-type DragState = {
-  ticketId: string;
-  sourceCategoryId: string;
-  sourceIndex: number;
-};
-
-type DropTarget = {
-  categoryId: string;
-  index: number;
-};
-
 function formatExpiryDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -59,112 +54,6 @@ function formatExpiryDate(value: string) {
 
 function toDateInputValue(value: string) {
   return value.slice(0, 10);
-}
-
-function moveTicketInCategories(
-  categories: Category[],
-  draggedTicketId: string,
-  sourceCategoryId: string,
-  destinationCategoryId: string,
-  destinationIndex: number,
-) {
-  const nextCategories = categories.map((category) => ({
-    ...category,
-    tickets: [...category.tickets],
-  }));
-
-  const sourceCategory = nextCategories.find(
-    (category) => category.id === sourceCategoryId,
-  );
-  const destinationCategory = nextCategories.find(
-    (category) => category.id === destinationCategoryId,
-  );
-
-  if (!sourceCategory || !destinationCategory) {
-    return categories;
-  }
-
-  const draggedTicket = sourceCategory.tickets.find(
-    (ticket) => ticket.id === draggedTicketId,
-  );
-
-  if (!draggedTicket) {
-    return categories;
-  }
-
-  sourceCategory.tickets = sourceCategory.tickets.filter(
-    (ticket) => ticket.id !== draggedTicketId,
-  );
-
-  const clampedIndex = Math.min(
-    Math.max(destinationIndex, 0),
-    destinationCategory.tickets.length,
-  );
-
-  destinationCategory.tickets.splice(clampedIndex, 0, {
-    ...draggedTicket,
-  });
-
-  nextCategories.forEach((category) => {
-    category.tickets = category.tickets.map((ticket, index) => ({
-      ...ticket,
-      order: index,
-    }));
-    category._count = {
-      tickets: category.tickets.length,
-    };
-  });
-
-  return nextCategories;
-}
-
-function getNormalizedDropTarget(
-  categories: Category[],
-  dragState: DragState,
-  dropTarget: DropTarget,
-) {
-  const sourceCategory = categories.find(
-    (category) => category.id === dragState.sourceCategoryId,
-  );
-
-  if (!sourceCategory) {
-    return null;
-  }
-
-  let nextIndex = dropTarget.index;
-
-  if (
-    dropTarget.categoryId === dragState.sourceCategoryId &&
-    nextIndex > dragState.sourceIndex
-  ) {
-    nextIndex -= 1;
-  }
-
-  const destinationCategory = categories.find(
-    (category) => category.id === dropTarget.categoryId,
-  );
-
-  if (!destinationCategory) {
-    return null;
-  }
-
-  const clampedIndex = Math.min(
-    Math.max(nextIndex, 0),
-    destinationCategory.tickets.length -
-      (dropTarget.categoryId === dragState.sourceCategoryId ? 1 : 0),
-  );
-
-  if (
-    dropTarget.categoryId === dragState.sourceCategoryId &&
-    clampedIndex === dragState.sourceIndex
-  ) {
-    return null;
-  }
-
-  return {
-    categoryId: dropTarget.categoryId,
-    index: clampedIndex,
-  };
 }
 
 function TicketEditDrawer({
