@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentSession } from "@/lib/auth/session";
-import { updateTicketForUser } from "@/lib/db/tickets";
+import { deleteTicketForUser, updateTicketForUser } from "@/lib/db/tickets";
 import { updateTicketSchema } from "@/lib/validation/tickets-update";
 
 type RouteContext = {
@@ -83,4 +83,41 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   return NextResponse.json({ ticket }, { status: 200 });
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "UNAUTHORIZED",
+          message: "You must be signed in to delete a ticket.",
+        },
+      },
+      { status: 401 },
+    );
+  }
+
+  const { id } = await context.params;
+
+  const deleted = await deleteTicketForUser({
+    ticketId: id,
+    userId: session.user.id,
+  });
+
+  if (!deleted) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "TICKET_NOT_FOUND",
+          message: "Unable to delete this ticket.",
+        },
+      },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({ success: true }, { status: 200 });
 }

@@ -271,6 +271,43 @@ function TicketEditDrawer({
     }
   }
 
+  async function handleDelete() {
+    if (
+      isSubmitting ||
+      !window.confirm("Delete this ticket? This action cannot be undone.")
+    ) {
+      return;
+    }
+
+    setErrors({});
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/tickets/${ticket.id}`, {
+        method: "DELETE",
+      });
+
+      const payload = (await response.json().catch(() => null)) as unknown;
+
+      if (!response.ok) {
+        setErrors(normalizeFormErrors(payload));
+        return;
+      }
+
+      onDescriptionDraftClear(ticket.id);
+      router.refresh();
+      onClose();
+    } catch {
+      setErrors({
+        formErrors: [
+          "Unable to delete this ticket right now. Please try again.",
+        ],
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   if (!isMounted) {
     return null;
   }
@@ -336,6 +373,15 @@ function TicketEditDrawer({
           />
 
           <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row">
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isSubmitting}
+              className="hover:cursor-pointer sm:flex-1"
+              onClick={() => void handleDelete()}
+            >
+              {isSubmitting ? "Working..." : "Delete Ticket"}
+            </Button>
             <Button
               type="submit"
               disabled={isSubmitting}

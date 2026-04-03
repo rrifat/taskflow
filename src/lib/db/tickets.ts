@@ -336,3 +336,33 @@ export async function moveTicketForUser({
     return { id: ticketId };
   });
 }
+
+export async function deleteTicketForUser({
+  ticketId,
+  userId,
+}: {
+  ticketId: string;
+  userId: string;
+}) {
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      id: ticketId,
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!ticket) {
+    return null;
+  }
+
+  await prisma.ticket.delete({
+    where: {
+      id: ticketId,
+    },
+  });
+
+  return { id: ticketId };
+}

@@ -3,7 +3,7 @@ import type { ComponentPropsWithoutRef } from "react";
 import { cx } from "@/lib/utils/cx";
 
 type ButtonProps = ComponentPropsWithoutRef<"button"> & {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "destructive";
   size?: "sm" | "md";
   fullWidth?: boolean;
 };
@@ -15,6 +15,8 @@ const variantClassNames = {
   primary: "bg-slate-950 text-white hover:bg-slate-800 disabled:bg-slate-400",
   secondary:
     "border border-slate-300 bg-white text-slate-900 shadow-sm hover:border-slate-400 hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400",
+  destructive:
+    "border border-red-200 bg-red-50 text-red-700 shadow-sm hover:border-red-300 hover:bg-red-100 disabled:border-red-100 disabled:bg-red-50 disabled:text-red-300",
 } as const;
 
 const sizeClassNames = {
