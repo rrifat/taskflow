@@ -17,6 +17,20 @@ export async function listCategoriesByUserId(userId: string) {
           description: true,
           expiryDate: true,
           order: true,
+          history: {
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 10,
+            select: {
+              id: true,
+              type: true,
+              fromCategoryId: true,
+              toCategoryId: true,
+              changedFields: true,
+              createdAt: true,
+            },
+          },
         },
       },
       _count: {

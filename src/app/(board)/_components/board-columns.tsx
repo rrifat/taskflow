@@ -32,6 +32,20 @@ type Ticket = {
   description: string;
   expiryDate: string;
   order: number;
+  history: {
+    id: string;
+    type: "CREATED" | "UPDATED" | "MOVED" | "DELETED";
+    fromCategoryId: string | null;
+    toCategoryId: string | null;
+    changedFields: Record<
+      string,
+      {
+        from: string;
+        to: string;
+      }
+    > | null;
+    createdAt: string;
+  }[];
 };
 
 type Category = {
@@ -60,9 +74,95 @@ function toDateInputValue(value: string) {
   return value.slice(0, 10);
 }
 
+function formatHistoryTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function getHistoryLabel(
+  entry: Ticket["history"][number],
+  categoryNames: Record<string, string>,
+) {
+  if (entry.type === "CREATED") {
+    const categoryName = entry.toCategoryId
+      ? categoryNames[entry.toCategoryId]
+      : undefined;
+
+    return categoryName ? `Created in ${categoryName}` : "Created";
+  }
+
+  if (entry.type === "MOVED") {
+    const fromCategoryName = entry.fromCategoryId
+      ? categoryNames[entry.fromCategoryId]
+      : undefined;
+    const toCategoryName = entry.toCategoryId
+      ? categoryNames[entry.toCategoryId]
+      : undefined;
+
+    if (
+      fromCategoryName &&
+      toCategoryName &&
+      fromCategoryName !== toCategoryName
+    ) {
+      return `Moved from ${fromCategoryName} to ${toCategoryName}`;
+    }
+    console.log({ fromCategoryName, toCategoryName });
+    const nextOrder = entry.changedFields?.order?.to;
+
+    if (typeof nextOrder === "string") {
+      return `Reordered in ${toCategoryName ?? "this column"} to position ${Number(nextOrder) + 1}`;
+    }
+
+    return "Moved";
+  }
+
+  if (entry.type === "UPDATED") {
+    const changedFieldLabels = Object.keys(entry.changedFields ?? {}).map(
+      (field) => {
+        if (field === "expiryDate") {
+          return "expiry date";
+        }
+
+        return field;
+      },
+    );
+
+    if (changedFieldLabels.length === 0) {
+      return "Updated ticket details";
+    }
+
+    return `Updated ${changedFieldLabels.join(", ")}`;
+  }
+
+  return "Deleted";
+}
+
+function getHistoryTypeBadgeClassName(
+  entryType: Ticket["history"][number]["type"],
+) {
+  if (entryType === "CREATED") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (entryType === "UPDATED") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (entryType === "MOVED") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border-slate-200 bg-slate-100 text-slate-700";
+}
+
 function TicketEditDrawer({
   categoryName,
   ticket,
+  categoryNames,
   descriptionDraft,
   onDescriptionDraftChange,
   onDescriptionDraftClear,
@@ -70,6 +170,7 @@ function TicketEditDrawer({
 }: {
   categoryName: string;
   ticket: Ticket;
+  categoryNames: Record<string, string>;
   descriptionDraft?: string;
   onDescriptionDraftChange: (ticketId: string, value: string) => void;
   onDescriptionDraftClear: (ticketId: string) => void;
@@ -243,6 +344,47 @@ function TicketEditDrawer({
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </div>
+
+          <section className="space-y-3 border-t border-slate-200 pt-5">
+            <div>
+              <h4 className="text-sm font-semibold text-slate-950">History</h4>
+              <p className="mt-1 text-sm text-slate-600">
+                Recent changes for this ticket.
+              </p>
+            </div>
+
+            {ticket.history.length > 0 ? (
+              <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+                {ticket.history.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">
+                          {getHistoryLabel(entry, categoryNames)}
+                        </p>
+
+                        <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">
+                          {formatHistoryTimestamp(entry.createdAt)}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] ${getHistoryTypeBadgeClassName(entry.type)}`}
+                      >
+                        {entry.type}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600">
+                No history has been recorded for this ticket yet.
+              </p>
+            )}
+          </section>
         </form>
       </aside>
     </>,
@@ -264,6 +406,9 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [movingCategoryId, setMovingCategoryId] = useState<string | null>(null);
+  const categoryNames = Object.fromEntries(
+    boardCategories.map((category) => [category.id, category.name]),
+  );
 
   useEffect(() => {
     setBoardCategories(categories);
@@ -474,6 +619,7 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                 }
 
                 event.preventDefault();
+                event.stopPropagation();
                 void handleTicketDrop();
               }}
             >
@@ -571,6 +717,7 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
                       }
 
                       event.preventDefault();
+                      event.stopPropagation();
                       void handleTicketDrop();
                     }}
                   >
@@ -764,6 +911,7 @@ export function BoardColumns({ categories }: BoardColumnsProps) {
         <TicketEditDrawer
           categoryName={activeTicket.categoryName}
           ticket={activeTicket.ticket}
+          categoryNames={categoryNames}
           descriptionDraft={descriptionDrafts[activeTicket.ticket.id]}
           onDescriptionDraftChange={handleDescriptionDraftChange}
           onDescriptionDraftClear={handleDescriptionDraftClear}

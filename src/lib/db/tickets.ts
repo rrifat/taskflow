@@ -1,4 +1,14 @@
+import { TicketHistoryType } from "@generated/prisma/client";
+
 import { prisma } from "@/lib/db/client";
+
+type TicketChangedFields = Record<
+  string,
+  {
+    from: string;
+    to: string;
+  }
+>;
 
 export async function createTicketForUser({
   userId,
@@ -39,7 +49,7 @@ export async function createTicketForUser({
       },
     });
 
-    return tx.ticket.create({
+    const ticket = await tx.ticket.create({
       data: {
         userId,
         categoryId,
@@ -56,6 +66,17 @@ export async function createTicketForUser({
         order: true,
       },
     });
+
+    await tx.ticketHistory.create({
+      data: {
+        ticketId: ticket.id,
+        actorUserId: userId,
+        type: TicketHistoryType.CREATED,
+        toCategoryId: categoryId,
+      },
+    });
+
+    return ticket;
   });
 }
 
@@ -72,36 +93,80 @@ export async function updateTicketForUser({
   description: string;
   expiryDate: Date;
 }) {
-  const existingTicket = await prisma.ticket.findFirst({
-    where: {
-      id: ticketId,
-      userId,
-    },
-    select: {
-      id: true,
-    },
-  });
+  return prisma.$transaction(async (tx) => {
+    const existingTicket = await tx.ticket.findFirst({
+      where: {
+        id: ticketId,
+        userId,
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        expiryDate: true,
+      },
+    });
 
-  if (!existingTicket) {
-    return null;
-  }
+    if (!existingTicket) {
+      return null;
+    }
 
-  return prisma.ticket.update({
-    where: {
-      id: ticketId,
-    },
-    data: {
-      title,
-      description,
-      expiryDate,
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      expiryDate: true,
-      order: true,
-    },
+    const changedFields: TicketChangedFields = {};
+
+    if (existingTicket.title !== title) {
+      changedFields.title = {
+        from: existingTicket.title,
+        to: title,
+      };
+    }
+
+    if (existingTicket.description !== description) {
+      changedFields.description = {
+        from: existingTicket.description,
+        to: description,
+      };
+    }
+
+    const previousExpiryDate = existingTicket.expiryDate.toISOString();
+    const nextExpiryDate = expiryDate.toISOString();
+
+    if (previousExpiryDate !== nextExpiryDate) {
+      changedFields.expiryDate = {
+        from: previousExpiryDate,
+        to: nextExpiryDate,
+      };
+    }
+
+    const ticket = await tx.ticket.update({
+      where: {
+        id: ticketId,
+      },
+      data: {
+        title,
+        description,
+        expiryDate,
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        expiryDate: true,
+        order: true,
+      },
+    });
+
+    if (Object.keys(changedFields).length > 0) {
+      await tx.ticketHistory.create({
+        data: {
+          ticketId,
+          actorUserId: userId,
+          type: TicketHistoryType.UPDATED,
+          changedFields,
+        },
+      });
+    }
+
+    return ticket;
   });
 }
 
@@ -182,6 +247,10 @@ export async function moveTicketForUser({
 
       nextTickets.splice(clampedIndex, 0, { id: ticketId });
 
+      const previousIndex = sourceTickets.findIndex(
+        (sourceTicket) => sourceTicket.id === ticketId,
+      );
+
       await Promise.all(
         nextTickets.map((nextTicket, index) =>
           tx.ticket.update({
@@ -192,6 +261,24 @@ export async function moveTicketForUser({
           }),
         ),
       );
+
+      if (previousIndex !== clampedIndex) {
+        await tx.ticketHistory.create({
+          data: {
+            ticketId,
+            actorUserId: userId,
+            type: TicketHistoryType.MOVED,
+            fromCategoryId: ticket.categoryId,
+            toCategoryId: destinationCategoryId,
+            changedFields: {
+              order: {
+                from: String(previousIndex),
+                to: String(clampedIndex),
+              },
+            },
+          },
+        });
+      }
 
       return { id: ticketId };
     }
@@ -229,6 +316,22 @@ export async function moveTicketForUser({
         }),
       ),
     );
+
+    await tx.ticketHistory.create({
+      data: {
+        ticketId,
+        actorUserId: userId,
+        type: TicketHistoryType.MOVED,
+        fromCategoryId: ticket.categoryId,
+        toCategoryId: destinationCategoryId,
+        changedFields: {
+          order: {
+            from: String(sourceTickets.findIndex((sourceTicket) => sourceTicket.id === ticketId)),
+            to: String(clampedIndex),
+          },
+        },
+      },
+    });
 
     return { id: ticketId };
   });

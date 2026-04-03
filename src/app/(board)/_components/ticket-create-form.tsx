@@ -201,7 +201,7 @@ export function TicketCreateForm({
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="sm:flex-1"
+                      className="sm:flex-1 hover:cursor-pointer"
                     >
                       {isSubmitting ? "Creating..." : "Create Ticket"}
                     </Button>

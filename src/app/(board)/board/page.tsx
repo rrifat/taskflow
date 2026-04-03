@@ -77,6 +77,10 @@ export default async function BoardPage() {
               tickets: category.tickets.map((ticket) => ({
                 ...ticket,
                 expiryDate: ticket.expiryDate.toISOString(),
+                history: ticket.history.map((entry) => ({
+                  ...entry,
+                  createdAt: entry.createdAt.toISOString(),
+                })),
               })),
             }))}
           />
