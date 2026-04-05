@@ -335,7 +335,7 @@ export default function TicketEditDrawer({
               variant="destructive"
               disabled={isSubmitting}
               className="hover:cursor-pointer sm:flex-1"
-              onClick={() => void handleDelete()}
+              onClick={handleDelete}
             >
               {isSubmitting ? "Working..." : "Delete Ticket"}
             </Button>

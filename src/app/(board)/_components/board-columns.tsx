@@ -75,22 +75,32 @@ export function BoardColumns({
     });
   }
 
-  function handleCardDragOver(
+  function handleDragOver(
     event: React.DragEvent<HTMLElement>,
     categoryId: string,
     index: number,
+    mode: "calculate" | "fixed",
   ) {
     if (!dragState) {
       return;
     }
 
     event.preventDefault();
+    event.stopPropagation();
 
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const midpoint = bounds.top + bounds.height / 2;
+    let targetIndex;
+
+    if (mode === "calculate") {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const midpoint = bounds.top + bounds.height / 2;
+      targetIndex = event.clientY < midpoint ? index : index + 1;
+    } else {
+      targetIndex = index;
+    }
+
     const proposedTarget = {
       categoryId,
-      index: event.clientY < midpoint ? index : index + 1,
+      index: targetIndex,
     };
     const normalizedTarget = getNormalizedDropTarget(
       boardCategories,
@@ -277,50 +287,6 @@ export function BoardColumns({
             <SurfaceCard
               key={category.id}
               className="flex min-h-80 w-100 shrink-0 flex-col p-6"
-              onDragOver={(event) => {
-                if (!dragState) {
-                  return;
-                }
-
-                event.preventDefault();
-
-                if (event.target !== event.currentTarget) {
-                  return;
-                }
-
-                const normalizedTarget = getNormalizedDropTarget(
-                  boardCategories,
-                  dragState,
-                  {
-                    categoryId: category.id,
-                    index: category.tickets.length,
-                  },
-                );
-
-                if (!normalizedTarget) {
-                  if (dropTarget) {
-                    setDropTarget(null);
-                  }
-                  return;
-                }
-
-                if (
-                  !dropTarget ||
-                  dropTarget.categoryId !== normalizedTarget.categoryId ||
-                  dropTarget.index !== normalizedTarget.index
-                ) {
-                  setDropTarget(normalizedTarget);
-                }
-              }}
-              onDrop={(event) => {
-                if (!dragState) {
-                  return;
-                }
-
-                event.preventDefault();
-                event.stopPropagation();
-                void handleTicketDrop();
-              }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -345,9 +311,7 @@ export function BoardColumns({
                         categoryIndex === 0 || movingCategoryId === category.id
                       }
                       aria-label={`Move ${category.name} left`}
-                      onClick={() =>
-                        void handleCategoryMove(category.id, "left")
-                      }
+                      onClick={() => handleCategoryMove(category.id, "left")}
                     >
                       ←
                     </Button>
@@ -361,9 +325,7 @@ export function BoardColumns({
                         movingCategoryId === category.id
                       }
                       aria-label={`Move ${category.name} right`}
-                      onClick={() =>
-                        void handleCategoryMove(category.id, "right")
-                      }
+                      onClick={() => handleCategoryMove(category.id, "right")}
                     >
                       →
                     </Button>
@@ -379,7 +341,7 @@ export function BoardColumns({
                       }
                       aria-label={`Delete ${category.name}`}
                       onClick={() =>
-                        void handleCategoryDelete(category.id, category.name)
+                        handleCategoryDelete(category.id, category.name)
                       }
                     >
                       ×
@@ -396,36 +358,7 @@ export function BoardColumns({
                         : "border-slate-200 bg-slate-50"
                     }`}
                     onDragOver={(event) => {
-                      if (!dragState) {
-                        return;
-                      }
-
-                      event.preventDefault();
-                      event.stopPropagation();
-
-                      const normalizedTarget = getNormalizedDropTarget(
-                        boardCategories,
-                        dragState,
-                        {
-                          categoryId: category.id,
-                          index: 0,
-                        },
-                      );
-
-                      if (!normalizedTarget) {
-                        if (dropTarget) {
-                          setDropTarget(null);
-                        }
-                        return;
-                      }
-
-                      if (
-                        !dropTarget ||
-                        dropTarget.categoryId !== normalizedTarget.categoryId ||
-                        dropTarget.index !== normalizedTarget.index
-                      ) {
-                        setDropTarget(normalizedTarget);
-                      }
+                      handleDragOver(event, category.id, 0, "fixed");
                     }}
                     onDrop={(event) => {
                       if (!dragState) {
@@ -434,7 +367,7 @@ export function BoardColumns({
 
                       event.preventDefault();
                       event.stopPropagation();
-                      void handleTicketDrop();
+                      handleTicketDrop();
                     }}
                   >
                     <p className="text-sm font-medium text-slate-600">
@@ -453,37 +386,7 @@ export function BoardColumns({
                             : "bg-transparent"
                         }`}
                         onDragOver={(event) => {
-                          if (!dragState) {
-                            return;
-                          }
-
-                          event.preventDefault();
-                          event.stopPropagation();
-
-                          const normalizedTarget = getNormalizedDropTarget(
-                            boardCategories,
-                            dragState,
-                            {
-                              categoryId: category.id,
-                              index,
-                            },
-                          );
-
-                          if (!normalizedTarget) {
-                            if (dropTarget) {
-                              setDropTarget(null);
-                            }
-                            return;
-                          }
-
-                          if (
-                            !dropTarget ||
-                            dropTarget.categoryId !==
-                              normalizedTarget.categoryId ||
-                            dropTarget.index !== normalizedTarget.index
-                          ) {
-                            setDropTarget(normalizedTarget);
-                          }
+                          handleDragOver(event, category.id, index, "fixed");
                         }}
                         onDrop={(event) => {
                           if (!dragState) {
@@ -492,7 +395,7 @@ export function BoardColumns({
 
                           event.preventDefault();
                           event.stopPropagation();
-                          void handleTicketDrop();
+                          handleTicketDrop();
                         }}
                       />
                       <button
@@ -534,7 +437,12 @@ export function BoardColumns({
                         }}
                         onDragOver={(event) => {
                           event.stopPropagation();
-                          handleCardDragOver(event, category.id, index);
+                          handleDragOver(
+                            event,
+                            category.id,
+                            index,
+                            "calculate",
+                          );
                         }}
                         onDrop={(event) => {
                           if (!dragState) {
@@ -543,7 +451,7 @@ export function BoardColumns({
 
                           event.preventDefault();
                           event.stopPropagation();
-                          void handleTicketDrop();
+                          handleTicketDrop();
                         }}
                         onClick={() => {
                           if (dragState) {
@@ -557,11 +465,9 @@ export function BoardColumns({
                         }}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className="min-w-0 text-sm font-semibold text-slate-950">
-                              {ticket.title}
-                            </h3>
-                          </div>
+                          <h3 className="min-w-0 text-sm font-semibold text-slate-950">
+                            {ticket.title}
+                          </h3>
                           <div className="flex shrink-0 flex-col items-end gap-1">
                             <span
                               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] ${getTicketExpiryBadgeClassName(
@@ -598,36 +504,12 @@ export function BoardColumns({
                         : "bg-transparent"
                     }`}
                     onDragOver={(event) => {
-                      if (!dragState) {
-                        return;
-                      }
-
-                      event.preventDefault();
-                      event.stopPropagation();
-
-                      const normalizedTarget = getNormalizedDropTarget(
-                        boardCategories,
-                        dragState,
-                        {
-                          categoryId: category.id,
-                          index: category.tickets.length,
-                        },
+                      handleDragOver(
+                        event,
+                        category.id,
+                        category.tickets.length,
+                        "fixed",
                       );
-
-                      if (!normalizedTarget) {
-                        if (dropTarget) {
-                          setDropTarget(null);
-                        }
-                        return;
-                      }
-
-                      if (
-                        !dropTarget ||
-                        dropTarget.categoryId !== normalizedTarget.categoryId ||
-                        dropTarget.index !== normalizedTarget.index
-                      ) {
-                        setDropTarget(normalizedTarget);
-                      }
                     }}
                     onDrop={(event) => {
                       if (!dragState) {
@@ -636,7 +518,7 @@ export function BoardColumns({
 
                       event.preventDefault();
                       event.stopPropagation();
-                      void handleTicketDrop();
+                      handleTicketDrop();
                     }}
                   />
                 ) : null}
